@@ -384,11 +384,42 @@ export default function VotePage() {
 
   if (phase === "waiting") {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center text-center px-4">
-        <div className="text-6xl mb-4">⏳</div>
-        <h2 className="text-3xl font-bold text-white mb-2">Voting hasn&apos;t started yet</h2>
-        <p className="text-white/50">The admin will open voting soon. Hang tight!</p>
-        <button onClick={handleLogout} className="mt-8 text-white/40 hover:text-white/70 text-sm transition">Logout</button>
+      <div className="min-h-screen flex flex-col items-center justify-center text-center px-6 py-12">
+        <div className="text-6xl mb-6 animate-float" style={{ animationDuration: "3s" }}>🎉</div>
+
+        <h1 className="text-4xl font-black bg-gradient-to-r from-yellow-300 via-pink-400 to-purple-400 bg-clip-text text-transparent mb-2">
+          Welcome!
+        </h1>
+        <p className="text-white/70 text-lg font-semibold mb-8">
+          Eurovision 2026 Viewing Party
+        </p>
+
+        <div className="max-w-sm w-full bg-white/5 border border-white/10 rounded-2xl p-6 text-left space-y-4 mb-8">
+          <p className="text-white leading-relaxed">
+            Welcome to the Eurovision 2026 Viewing Party hosted by{" "}
+            <span className="text-yellow-300 font-semibold">Mauricio</span> and{" "}
+            <span className="text-pink-300 font-semibold">Hendrik</span>! 🥂
+          </p>
+          <p className="text-white/70 leading-relaxed">
+            Please enjoy the evening with drinks and themed food prepared by the
+            loving hands of the Eurovision n.º&nbsp;1 fan in Gallus —{" "}
+            <span className="text-pink-300 font-semibold">Hendrik</span>. 🍽️
+          </p>
+          <p className="text-white/70 leading-relaxed">
+            Keep your votes a secret and don&apos;t tell anyone what you picked
+            — there will be a{" "}
+            <span className="text-purple-300 font-semibold">big final reveal!</span> 🤫✨
+          </p>
+        </div>
+
+        <div className="flex gap-3 text-3xl mb-8">
+          {["🎤","🇪🇺","⭐","🎶","🏆"].map((e, i) => (
+            <span key={i} className="animate-float" style={{ animationDelay: `${i * 0.35}s`, animationDuration: "2.8s" }}>{e}</span>
+          ))}
+        </div>
+
+        <p className="text-white/30 text-sm">The voting will open soon. Hang tight!</p>
+        <button onClick={handleLogout} className="mt-6 text-white/20 hover:text-white/50 text-xs transition">Logout</button>
       </div>
     );
   }
