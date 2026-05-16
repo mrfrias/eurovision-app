@@ -85,6 +85,16 @@ export async function initDb() {
     )
   `;
   await sql`
+    CREATE TABLE IF NOT EXISTS comments (
+      id BIGSERIAL PRIMARY KEY,
+      user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      contestant_id BIGINT NOT NULL REFERENCES contestants(id) ON DELETE CASCADE,
+      content VARCHAR(255) NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE(user_id, contestant_id)
+    )
+  `;
+  await sql`
     CREATE TABLE IF NOT EXISTS world_results (
       id INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),
       top5 TEXT NOT NULL DEFAULT '[]',

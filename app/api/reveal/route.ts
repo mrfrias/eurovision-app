@@ -8,7 +8,7 @@ export async function GET() {
 
   await initDb();
 
-  const [stateRes, contestantsRes, worldRes, predsRes, scoresRes] = await Promise.all([
+  const [stateRes, contestantsRes, worldRes, predsRes, scoresRes, commentsRes] = await Promise.all([
     sql`SELECT key, value FROM app_state WHERE key IN ('phase', 'reveal_stage')`,
     sql`SELECT * FROM contestants ORDER BY "order"`,
     sql`SELECT top5, bottom5, winner_id FROM world_results WHERE id = 1`,
@@ -26,6 +26,14 @@ export async function GET() {
       LEFT JOIN votes v ON v.contestant_id = c.id
       GROUP BY c.id, c.country, c.artist, c.song, c.flag
       ORDER BY total_points ASC
+    `,
+    sql`
+      SELECT co.content, u.name AS user_name, c.country, c.flag
+      FROM comments co
+      JOIN users u ON u.id = co.user_id
+      JOIN contestants c ON c.id = co.contestant_id
+      WHERE u.is_admin = 0 AND TRIM(co.content) <> ''
+      ORDER BY RANDOM()
     `,
   ]);
 
@@ -75,5 +83,6 @@ export async function GET() {
     contestants: contestantsRes.rows,
     playerStats,
     scores: scoresRes.rows,
+    comments: commentsRes.rows,
   });
 }

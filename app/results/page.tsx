@@ -36,6 +36,13 @@ interface ScoreRow {
   total_points: number;
 }
 
+interface RevealComment {
+  content: string;
+  user_name: string;
+  country: string;
+  flag: string;
+}
+
 interface RevealData {
   phase: string;
   stage: number;
@@ -43,6 +50,7 @@ interface RevealData {
   contestants: Contestant[];
   playerStats: PlayerStat[];
   scores: ScoreRow[];
+  comments: RevealComment[];
 }
 
 // ── Helper ───────────────────────────────────────────────────────────────────
@@ -55,8 +63,28 @@ function medal(n: number) {
 }
 
 // ── Stage 0: Waiting ─────────────────────────────────────────────────────────
-function WaitingScreen() {
+function WaitingScreen({ comments }: { comments: RevealComment[] }) {
   const drinks = ["🍹", "🥂", "🍸", "🍺", "🍾", "🎉"];
+
+  // Cycling comment state
+  const [commentIndex, setCommentIndex] = useState(0);
+  const [commentVisible, setCommentVisible] = useState(true);
+  const hasComments = comments.length > 0;
+
+  useEffect(() => {
+    if (!hasComments) return;
+    const cycle = setInterval(() => {
+      setCommentVisible(false);
+      setTimeout(() => {
+        setCommentIndex((i) => (i + 1) % comments.length);
+        setCommentVisible(true);
+      }, 600);
+    }, 4500);
+    return () => clearInterval(cycle);
+  }, [hasComments, comments.length]);
+
+  const activeComment = hasComments ? comments[commentIndex] : null;
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center text-center px-4 overflow-hidden">
       <div className="relative mb-8">
@@ -65,25 +93,39 @@ function WaitingScreen() {
         <div className="absolute -bottom-2 -left-8 text-3xl animate-sparkle" style={{ animationDelay: "0.7s" }}>⭐</div>
       </div>
 
-      <h1 className="text-4xl font-black text-white mb-3">
-        Sit back &amp; relax!
-      </h1>
+      <h1 className="text-4xl font-black text-white mb-3">Sit back &amp; relax!</h1>
       <p className="text-xl text-white/70 mb-2">The host is preparing the results…</p>
-      <p className="text-white/50 text-lg mb-10">Now&apos;s the perfect time to pour yourself a drink 🥂</p>
+      <p className="text-white/50 text-lg mb-8">Now&apos;s the perfect time to pour yourself a drink 🥂</p>
 
       <div className="flex gap-4 justify-center mb-10">
         {drinks.map((d, i) => (
-          <span
-            key={i}
-            className="text-3xl animate-float"
-            style={{ animationDelay: `${i * 0.4}s`, animationDuration: `${2.5 + i * 0.2}s` }}
-          >
+          <span key={i} className="text-3xl animate-float" style={{ animationDelay: `${i * 0.4}s`, animationDuration: `${2.5 + i * 0.2}s` }}>
             {d}
           </span>
         ))}
       </div>
 
-      <div className="flex items-center gap-2 text-white/30">
+      {/* Floating comments carousel */}
+      {hasComments && activeComment && (
+        <div className="w-full max-w-sm min-h-[96px] flex items-center justify-center mb-6">
+          <div
+            className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-center"
+            style={{ opacity: commentVisible ? 1 : 0, transition: "opacity 0.6s ease" }}
+          >
+            <p className="text-white/80 text-sm italic mb-3 leading-relaxed">
+              &ldquo;{activeComment.content}&rdquo;
+            </p>
+            <div className="flex items-center justify-center gap-2">
+              <span className="text-xl">{activeComment.flag}</span>
+              <span className="text-white/40 text-xs">{activeComment.country}</span>
+              <span className="text-white/20 text-xs">·</span>
+              <span className="text-purple-300 text-xs font-medium">{activeComment.user_name}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="flex items-center gap-2">
         <span className="w-2 h-2 rounded-full bg-purple-400 animate-bounce" style={{ animationDelay: "0s" }} />
         <span className="w-2 h-2 rounded-full bg-pink-400 animate-bounce" style={{ animationDelay: "0.2s" }} />
         <span className="w-2 h-2 rounded-full bg-yellow-400 animate-bounce" style={{ animationDelay: "0.4s" }} />
@@ -446,7 +488,7 @@ export default function ResultsPage() {
 
   return (
     <div key={stageKey}>
-      {currentStage === 0 && <WaitingScreen />}
+      {currentStage === 0 && <WaitingScreen comments={data.comments ?? []} />}
       {currentStage === 1 && <BottomFiveReveal data={data} />}
       {currentStage === 2 && <TopFiveReveal data={data} />}
       {currentStage === 3 && <WinnerReveal data={data} />}

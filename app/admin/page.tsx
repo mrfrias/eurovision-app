@@ -36,21 +36,23 @@ interface WorldResults {
   winner_id: number | null;
 }
 
-type Phase = "waiting" | "voting" | "closed" | "results";
+type Phase = "waiting" | "live_show" | "voting" | "closed" | "results";
 type Tab = "control" | "contestants" | "users" | "results" | "reveal";
 
 const PHASE_LABELS: Record<Phase, string> = {
-  waiting: "Waiting",
-  voting: "Voting Open",
-  closed: "Voting Closed",
-  results: "Results Shown",
+  waiting:   "Waiting",
+  live_show: "Live Show",
+  voting:    "Voting Open",
+  closed:    "Voting Closed",
+  results:   "Results Shown",
 };
 
 const PHASE_COLORS: Record<Phase, string> = {
-  waiting:  "bg-yellow-500/20 text-yellow-300 border-yellow-500/40",
-  voting:   "bg-green-500/20 text-green-300 border-green-500/40",
-  closed:   "bg-red-500/20 text-red-300 border-red-500/40",
-  results:  "bg-purple-500/20 text-purple-300 border-purple-500/40",
+  waiting:   "bg-yellow-500/20 text-yellow-300 border-yellow-500/40",
+  live_show: "bg-blue-500/20 text-blue-300 border-blue-500/40",
+  voting:    "bg-green-500/20 text-green-300 border-green-500/40",
+  closed:    "bg-red-500/20 text-red-300 border-red-500/40",
+  results:   "bg-purple-500/20 text-purple-300 border-purple-500/40",
 };
 
 const REVEAL_STAGES = [
@@ -405,15 +407,16 @@ export default function AdminPage() {
               <p className="text-white/50 text-sm mb-5">Control the voting lifecycle for all participants.</p>
               <div className="grid grid-cols-2 gap-3">
                 {([
-                  { phase: "waiting" as Phase, label: "⏳ Waiting",      desc: "Lobby open, no voting yet",     color: "from-yellow-600 to-amber-600" },
-                  { phase: "voting"  as Phase, label: "✅ Open Voting",   desc: "Allow participants to vote",    color: "from-green-600 to-emerald-600" },
-                  { phase: "closed"  as Phase, label: "🔒 Close Voting",  desc: "Lock in all votes",             color: "from-red-600 to-rose-600" },
-                  { phase: "results" as Phase, label: "🏆 Show Results",  desc: "Redirect all to results page",  color: "from-purple-600 to-pink-600" },
-                ] as const).map(({ phase: p, label, desc, color }) => (
+                  { phase: "waiting"   as Phase, label: "⏳ Waiting",      desc: "Lobby open, no voting yet",       color: "from-yellow-600 to-amber-600",  span: false },
+                  { phase: "live_show" as Phase, label: "🎬 Live Show",    desc: "Players comment on each country", color: "from-blue-600 to-cyan-600",     span: false },
+                  { phase: "voting"    as Phase, label: "✅ Open Voting",   desc: "Allow participants to vote",      color: "from-green-600 to-emerald-600", span: false },
+                  { phase: "closed"    as Phase, label: "🔒 Close Voting",  desc: "Lock in all votes",               color: "from-red-600 to-rose-600",      span: false },
+                  { phase: "results"   as Phase, label: "🏆 Show Results",  desc: "Redirect all to results page",    color: "from-purple-600 to-pink-600",   span: true },
+                ] as const).map(({ phase: p, label, desc, color, span }) => (
                   <button
                     key={p}
                     onClick={() => setPhaseAction(p)}
-                    className={`text-left p-4 rounded-xl border-2 transition ${
+                    className={`text-left p-4 rounded-xl border-2 transition ${span ? "col-span-2" : ""} ${
                       phase === p ? `bg-gradient-to-br ${color} border-white/40` : "bg-white/5 border-white/10 hover:border-white/30"
                     }`}
                   >

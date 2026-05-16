@@ -15,7 +15,7 @@ export async function PUT(req: NextRequest) {
   if (!session?.is_admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { phase } = await req.json();
-  const valid = ["waiting", "voting", "closed", "results"];
+  const valid = ["waiting", "live_show", "voting", "closed", "results"];
   if (!valid.includes(phase)) return NextResponse.json({ error: "Invalid phase" }, { status: 400 });
 
   await sql`UPDATE app_state SET value = ${phase} WHERE key = 'phase'`;
