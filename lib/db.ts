@@ -74,6 +74,16 @@ export async function initDb() {
       value TEXT NOT NULL
     )
   `;
+  await sql`
+    CREATE TABLE IF NOT EXISTS predictions (
+      id BIGSERIAL PRIMARY KEY,
+      user_id BIGINT NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+      top5 TEXT NOT NULL DEFAULT '[]',
+      bottom5 TEXT NOT NULL DEFAULT '[]',
+      winner_id BIGINT REFERENCES contestants(id) ON DELETE SET NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `;
 
   // Seed admin
   const adminCheck = await sql`SELECT id FROM users WHERE is_admin = 1 LIMIT 1`;
