@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import getDb from "@/lib/db";
+import { sql, initDb } from "@/lib/db";
 import { getSession } from "@/lib/session";
 
 export async function GET() {
-  const db = getDb();
-  const rows = db.prepare(`SELECT * FROM contestants ORDER BY "order", country`).all();
-  return NextResponse.json(rows);
+  await initDb();
+  const result = await sql`SELECT * FROM contestants ORDER BY "order", country`;
+  return NextResponse.json(result.rows);
 }
 
 export async function POST(req: NextRequest) {
@@ -16,11 +16,12 @@ export async function POST(req: NextRequest) {
   if (!country || !artist || !song || !flag)
     return NextResponse.json({ error: "All fields required" }, { status: 400 });
 
-  const db = getDb();
-  const max = db.prepare(`SELECT MAX("order") as m FROM contestants`).get() as { m: number | null };
-  const result = db
-    .prepare(`INSERT INTO contestants (country, artist, song, flag, "order") VALUES (?, ?, ?, ?, ?)`)
-    .run(country, artist, song, flag, (max.m ?? 0) + 1);
-
-  return NextResponse.json({ id: result.lastInsertRowid, country, artist, song, flag });
+  const maxResult = await sql`SELECT MAX("order") as m FROM contestants`;
+  const max = (maxResult.rows[0] as { m: number | null }).m ?? 0;
+  const result = await sql`
+    INSERT INTO contestants (country, artist, song, flag, "order")
+    VALUES (${country}, ${artist}, ${song}, ${flag}, ${max + 1})
+    RETURNING id
+  `;
+  return NextResponse.json({ id: result.rows[0].id, country, artist, song, flag });
 }
