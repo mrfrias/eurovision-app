@@ -251,6 +251,7 @@ export default function VotePage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [selectedContestant, setSelectedContestant] = useState<number | null>(null);
+  const [userName, setUserName] = useState("");
 
   // Comments state
   const [myComments, setMyComments] = useState<Record<number, string>>({});
@@ -260,18 +261,21 @@ export default function VotePage() {
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const loadData = useCallback(async () => {
-    const [contRes, stateRes, votesRes, predsRes, commentsRes] = await Promise.all([
+    const [contRes, stateRes, votesRes, predsRes, commentsRes, meRes] = await Promise.all([
       fetch("/api/contestants"),
       fetch("/api/state"),
       fetch("/api/votes"),
       fetch("/api/predictions"),
       fetch("/api/comments"),
+      fetch("/api/me"),
     ]);
     if (contRes.status === 401) { router.push("/"); return; }
 
-    const [contData, stateData, votesData, predsData, commentsData] = await Promise.all([
-      contRes.json(), stateRes.json(), votesRes.json(), predsRes.json(), commentsRes.json(),
+    const [contData, stateData, votesData, predsData, commentsData, meData] = await Promise.all([
+      contRes.json(), stateRes.json(), votesRes.json(), predsRes.json(), commentsRes.json(), meRes.json(),
     ]);
+
+    if (meData?.name) setUserName(meData.name);
 
     setContestants(contData);
     setPhase(stateData.phase);
@@ -419,7 +423,8 @@ export default function VotePage() {
         </div>
 
         <p className="text-white/30 text-sm">The voting will open soon. Hang tight!</p>
-        <button onClick={handleLogout} className="mt-6 text-white/20 hover:text-white/50 text-xs transition">Logout</button>
+        {userName && <p className="text-white/20 text-xs mt-4">Logged in as {userName}</p>}
+        <button onClick={handleLogout} className="mt-2 text-white/20 hover:text-white/50 text-xs transition">Logout</button>
       </div>
     );
   }
@@ -469,7 +474,8 @@ export default function VotePage() {
         </div>
 
         <p className="text-white/30 text-sm">Sit tight — the host is preparing the reveal 🎤</p>
-        <button onClick={handleLogout} className="mt-6 text-white/20 hover:text-white/50 text-xs transition">Logout</button>
+        {userName && <p className="text-white/20 text-xs mt-4">Logged in as {userName}</p>}
+        <button onClick={handleLogout} className="mt-2 text-white/20 hover:text-white/50 text-xs transition">Logout</button>
       </div>
     );
   }
@@ -490,7 +496,10 @@ export default function VotePage() {
               <h1 className="text-lg font-bold text-white">🎬 Live Show</h1>
               <p className="text-xs text-white/50">Leave a comment for each country as you watch!</p>
             </div>
-            <button onClick={handleLogout} className="text-white/30 hover:text-white/60 text-xs transition">Logout</button>
+            <div className="flex flex-col items-end gap-1">
+              {userName && <span className="text-xs text-white/50">👤 {userName}</span>}
+              <button onClick={handleLogout} className="text-white/30 hover:text-white/60 text-xs transition">Logout</button>
+            </div>
           </div>
         </div>
 
@@ -553,9 +562,12 @@ export default function VotePage() {
             <h1 className="text-lg font-bold text-white">🎤 Eurovision 2026</h1>
             <p className="text-xs text-white/50">Assign 10 point values to your favourite acts</p>
           </div>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-white/60"><span className="text-white font-semibold">{assignedCount}</span>/10</span>
-            <button onClick={handleLogout} className="text-white/30 hover:text-white/60 text-xs transition">Logout</button>
+          <div className="flex flex-col items-end gap-1">
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-white/60"><span className="text-white font-semibold">{assignedCount}</span>/10</span>
+              <button onClick={handleLogout} className="text-white/30 hover:text-white/60 text-xs transition">Logout</button>
+            </div>
+            {userName && <span className="text-xs text-white/40">👤 {userName}</span>}
           </div>
         </div>
       </div>
