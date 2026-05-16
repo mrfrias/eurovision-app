@@ -79,7 +79,7 @@ function WaitingScreen({ comments }: { comments: RevealComment[] }) {
         setCommentIndex((i) => (i + 1) % comments.length);
         setCommentVisible(true);
       }, 600);
-    }, 4500);
+    }, 5600);
     return () => clearInterval(cycle);
   }, [hasComments, comments.length]);
 
