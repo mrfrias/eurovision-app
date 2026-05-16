@@ -216,6 +216,8 @@ export default function AdminPage() {
   const [worldResults, setWorldResults] = useState<WorldResults>({ top5: [], bottom5: [], winner_id: null });
   const [worldSaving, setWorldSaving] = useState(false);
   const [worldSaved, setWorldSaved] = useState(false);
+  const [resetConfirm, setResetConfirm] = useState(false);
+  const [resetting, setResetting] = useState(false);
 
   const loadAll = useCallback(async () => {
     const [stateRes, contRes, usersRes] = await Promise.all([
@@ -330,6 +332,19 @@ export default function AdminPage() {
     if (res.ok) setRevealStage(stage);
   }
 
+  async function handleReset() {
+    setResetting(true);
+    await fetch("/api/admin/reset", { method: "POST" });
+    // Reload fresh state
+    await loadAll();
+    setUsers([]);
+    setResults([]);
+    setWorldResults({ top5: [], bottom5: [], winner_id: null });
+    setRevealStage(0);
+    setResetConfirm(false);
+    setResetting(false);
+  }
+
   async function handleLogout() {
     await fetch("/api/auth", { method: "DELETE" });
     router.push("/");
@@ -375,9 +390,12 @@ export default function AdminPage() {
             <span className={`text-xs font-semibold px-3 py-1 rounded-full border ${PHASE_COLORS[phase]}`}>
               {PHASE_LABELS[phase]}
             </span>
-            <button onClick={handleLogout} className="text-white/30 hover:text-white/60 text-xs transition">
-              Logout
-            </button>
+            <div className="flex flex-col items-end">
+              <span className="text-xs text-white/50">👤 Admin</span>
+              <button onClick={handleLogout} className="text-white/30 hover:text-white/60 text-xs transition">
+                Logout
+              </button>
+            </div>
           </div>
         </div>
         <div className="max-w-3xl mx-auto px-4 flex gap-0 overflow-x-auto">
@@ -437,6 +455,41 @@ export default function AdminPage() {
                   <div className="text-white/50 text-xs mt-1">{label}</div>
                 </div>
               ))}
+            </div>
+
+            {/* Reset */}
+            <div className="bg-red-950/30 border border-red-500/20 rounded-2xl p-5">
+              <h3 className="text-sm font-bold text-red-300 mb-1">Danger Zone</h3>
+              <p className="text-white/40 text-xs mb-4">
+                Deletes all votes, predictions, comments, and registered users. Resets phase and reveal stage. Contestants are kept.
+              </p>
+              {!resetConfirm ? (
+                <button
+                  onClick={() => setResetConfirm(true)}
+                  className="w-full border border-red-500/40 text-red-400 hover:bg-red-500/10 text-sm font-semibold py-2.5 rounded-xl transition"
+                >
+                  🗑️ Reset All Data
+                </button>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-red-300 text-xs text-center font-medium">This cannot be undone. Are you sure?</p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setResetConfirm(false)}
+                      className="flex-1 border border-white/20 text-white/50 hover:bg-white/5 text-sm py-2.5 rounded-xl transition"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleReset}
+                      disabled={resetting}
+                      className="flex-1 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white text-sm font-bold py-2.5 rounded-xl transition"
+                    >
+                      {resetting ? "Resetting…" : "Yes, reset everything"}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}

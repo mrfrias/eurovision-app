@@ -251,6 +251,7 @@ export default function VotePage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [selectedContestant, setSelectedContestant] = useState<number | null>(null);
+  const [userName, setUserName] = useState("");
 
   // Comments state
   const [myComments, setMyComments] = useState<Record<number, string>>({});
@@ -260,18 +261,21 @@ export default function VotePage() {
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const loadData = useCallback(async () => {
-    const [contRes, stateRes, votesRes, predsRes, commentsRes] = await Promise.all([
+    const [contRes, stateRes, votesRes, predsRes, commentsRes, meRes] = await Promise.all([
       fetch("/api/contestants"),
       fetch("/api/state"),
       fetch("/api/votes"),
       fetch("/api/predictions"),
       fetch("/api/comments"),
+      fetch("/api/me"),
     ]);
     if (contRes.status === 401) { router.push("/"); return; }
 
-    const [contData, stateData, votesData, predsData, commentsData] = await Promise.all([
-      contRes.json(), stateRes.json(), votesRes.json(), predsRes.json(), commentsRes.json(),
+    const [contData, stateData, votesData, predsData, commentsData, meData] = await Promise.all([
+      contRes.json(), stateRes.json(), votesRes.json(), predsRes.json(), commentsRes.json(), meRes.json(),
     ]);
+
+    if (meData?.name) setUserName(meData.name);
 
     setContestants(contData);
     setPhase(stateData.phase);
@@ -419,18 +423,59 @@ export default function VotePage() {
         </div>
 
         <p className="text-white/30 text-sm">The voting will open soon. Hang tight!</p>
-        <button onClick={handleLogout} className="mt-6 text-white/20 hover:text-white/50 text-xs transition">Logout</button>
+        {userName && <p className="text-white/20 text-xs mt-4">Logged in as {userName}</p>}
+        <button onClick={handleLogout} className="mt-2 text-white/20 hover:text-white/50 text-xs transition">Logout</button>
       </div>
     );
   }
 
   if (phase === "closed" && step === "voting" && Object.keys(savedVotes).length === 0) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center text-center px-4">
+      <div className="min-h-screen flex flex-col items-center justify-center text-center px-6 py-12">
         <div className="text-6xl mb-4">🔒</div>
         <h2 className="text-3xl font-bold text-white mb-2">Voting is closed</h2>
         <p className="text-white/50">You didn&apos;t submit your votes in time.</p>
         <button onClick={handleLogout} className="mt-8 text-white/40 hover:text-white/70 text-sm transition">Logout</button>
+      </div>
+    );
+  }
+
+  if (phase === "closed" && step === "done") {
+    const drinks = ["🍷", "🥂", "🍸", "🍺", "🍹", "🫧"];
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center text-center px-6 py-12">
+        <div className="text-7xl mb-6 animate-float" style={{ animationDuration: "2.8s" }}>🤫</div>
+
+        <h1 className="text-4xl font-black text-white mb-2">Votes locked in!</h1>
+        <p className="text-white/60 text-lg mb-8">The results will be revealed soon…</p>
+
+        <div className="max-w-sm w-full bg-white/5 border border-white/10 rounded-2xl p-6 text-left space-y-4 mb-8">
+          <p className="text-white leading-relaxed">
+            🤐 <span className="font-semibold">Keep your votes to yourself!</span> Don&apos;t share
+            what you picked — not a single hint. The suspense is part of the fun!
+          </p>
+          <p className="text-white/70 leading-relaxed">
+            No whispers, no hints, no peeking at anyone else&apos;s screen. The big
+            reveal is coming and it&apos;s going to be{" "}
+            <span className="text-yellow-300 font-semibold">spectacular</span>. ✨
+          </p>
+          <p className="text-white/70 leading-relaxed">
+            In the meantime — your glass looks suspiciously empty. 👀
+            Hendrik&apos;s food table is calling your name too. Go enjoy! 🍽️
+          </p>
+        </div>
+
+        <div className="flex gap-3 text-3xl mb-8">
+          {drinks.map((d, i) => (
+            <span key={i} className="animate-float" style={{ animationDelay: `${i * 0.3}s`, animationDuration: `${2.5 + i * 0.15}s` }}>
+              {d}
+            </span>
+          ))}
+        </div>
+
+        <p className="text-white/30 text-sm">Sit tight — the host is preparing the reveal 🎤</p>
+        {userName && <p className="text-white/20 text-xs mt-4">Logged in as {userName}</p>}
+        <button onClick={handleLogout} className="mt-2 text-white/20 hover:text-white/50 text-xs transition">Logout</button>
       </div>
     );
   }
@@ -451,7 +496,10 @@ export default function VotePage() {
               <h1 className="text-lg font-bold text-white">🎬 Live Show</h1>
               <p className="text-xs text-white/50">Leave a comment for each country as you watch!</p>
             </div>
-            <button onClick={handleLogout} className="text-white/30 hover:text-white/60 text-xs transition">Logout</button>
+            <div className="flex flex-col items-end gap-1">
+              {userName && <span className="text-xs text-white/50">👤 {userName}</span>}
+              <button onClick={handleLogout} className="text-white/30 hover:text-white/60 text-xs transition">Logout</button>
+            </div>
           </div>
         </div>
 
@@ -514,9 +562,12 @@ export default function VotePage() {
             <h1 className="text-lg font-bold text-white">🎤 Eurovision 2026</h1>
             <p className="text-xs text-white/50">Assign 10 point values to your favourite acts</p>
           </div>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-white/60"><span className="text-white font-semibold">{assignedCount}</span>/10</span>
-            <button onClick={handleLogout} className="text-white/30 hover:text-white/60 text-xs transition">Logout</button>
+          <div className="flex flex-col items-end gap-1">
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-white/60"><span className="text-white font-semibold">{assignedCount}</span>/10</span>
+              <button onClick={handleLogout} className="text-white/30 hover:text-white/60 text-xs transition">Logout</button>
+            </div>
+            {userName && <span className="text-xs text-white/40">👤 {userName}</span>}
           </div>
         </div>
       </div>
