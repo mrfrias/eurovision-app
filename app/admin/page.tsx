@@ -30,8 +30,14 @@ interface Result {
   vote_count: number;
 }
 
+interface WorldResults {
+  top5: number[];
+  bottom5: number[];
+  winner_id: number | null;
+}
+
 type Phase = "waiting" | "voting" | "closed" | "results";
-type Tab = "control" | "contestants" | "users" | "results";
+type Tab = "control" | "contestants" | "users" | "results" | "reveal";
 
 const PHASE_LABELS: Record<Phase, string> = {
   waiting: "Waiting",
@@ -41,12 +47,21 @@ const PHASE_LABELS: Record<Phase, string> = {
 };
 
 const PHASE_COLORS: Record<Phase, string> = {
-  waiting: "bg-yellow-500/20 text-yellow-300 border-yellow-500/40",
-  voting: "bg-green-500/20 text-green-300 border-green-500/40",
-  closed: "bg-red-500/20 text-red-300 border-red-500/40",
-  results: "bg-purple-500/20 text-purple-300 border-purple-500/40",
+  waiting:  "bg-yellow-500/20 text-yellow-300 border-yellow-500/40",
+  voting:   "bg-green-500/20 text-green-300 border-green-500/40",
+  closed:   "bg-red-500/20 text-red-300 border-red-500/40",
+  results:  "bg-purple-500/20 text-purple-300 border-purple-500/40",
 };
 
+const REVEAL_STAGES = [
+  { stage: 0, label: "⏳ Waiting",       desc: "Players see the drinks animation" },
+  { stage: 1, label: "🔻 Bottom 5",      desc: "Reveal world bottom 5 + scores" },
+  { stage: 2, label: "🔝 Top 5",         desc: "Reveal world top 5 + scores" },
+  { stage: 3, label: "🏆 Winner",        desc: "Dramatic winner reveal" },
+  { stage: 4, label: "🎤 Player scores", desc: "Animated country-by-country" },
+];
+
+// ── Edit contestant modal ─────────────────────────────────────────────────────
 function EditContestantModal({
   contestant,
   onSave,
@@ -58,9 +73,9 @@ function EditContestantModal({
 }) {
   const [form, setForm] = useState({
     country: contestant?.country ?? "",
-    artist: contestant?.artist ?? "",
-    song: contestant?.song ?? "",
-    flag: contestant?.flag ?? "",
+    artist:  contestant?.artist  ?? "",
+    song:    contestant?.song    ?? "",
+    flag:    contestant?.flag    ?? "",
   });
   const [saving, setSaving] = useState(false);
 
@@ -79,10 +94,10 @@ function EditContestantModal({
         </h3>
         <form onSubmit={handleSubmit} className="space-y-3">
           {[
-            { key: "flag", label: "Flag emoji", placeholder: "🇵🇹" },
-            { key: "country", label: "Country", placeholder: "Portugal" },
-            { key: "artist", label: "Artist", placeholder: "Artist name" },
-            { key: "song", label: "Song", placeholder: "Song title" },
+            { key: "flag",    label: "Flag emoji", placeholder: "🇵🇹" },
+            { key: "country", label: "Country",    placeholder: "Portugal" },
+            { key: "artist",  label: "Artist",     placeholder: "Artist name" },
+            { key: "song",    label: "Song",        placeholder: "Song title" },
           ].map(({ key, label, placeholder }) => (
             <div key={key}>
               <label className="block text-xs text-white/50 mb-1">{label}</label>
@@ -100,7 +115,7 @@ function EditContestantModal({
               Cancel
             </button>
             <button type="submit" disabled={saving} className="flex-1 bg-purple-600 hover:bg-purple-500 text-white py-2 rounded-lg transition disabled:opacity-50">
-              {saving ? "Saving..." : "Save"}
+              {saving ? "Saving…" : "Save"}
             </button>
           </div>
         </form>
@@ -109,6 +124,79 @@ function EditContestantModal({
   );
 }
 
+// ── Country picker (used in reveal tab) ──────────────────────────────────────
+function CountryPicker({
+  label,
+  contestants,
+  selected,
+  disabled,
+  max,
+  single,
+  onChange,
+}: {
+  label: string;
+  contestants: Contestant[];
+  selected: number[];
+  disabled?: number[];
+  max: number;
+  single?: boolean;
+  onChange: (ids: number[]) => void;
+}) {
+  function toggle(id: number) {
+    if (single) {
+      onChange(selected[0] === id ? [] : [id]);
+      return;
+    }
+    if (selected.includes(id)) {
+      onChange(selected.filter((x) => x !== id));
+    } else if (selected.length < max) {
+      onChange([...selected, id]);
+    }
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-xs font-semibold text-white/60 uppercase tracking-wider">{label}</p>
+        {!single && (
+          <span className={`text-xs px-2 py-0.5 rounded-full ${selected.length === max ? "bg-green-500/20 text-green-300" : "bg-white/10 text-white/50"}`}>
+            {selected.length}/{max}
+          </span>
+        )}
+      </div>
+      <div className="grid grid-cols-1 gap-1.5 max-h-72 overflow-y-auto pr-1">
+        {contestants.map((c) => {
+          const isSelected  = selected.includes(c.id);
+          const isDisabled  = !isSelected && ((disabled ?? []).includes(c.id) || (!single && selected.length >= max));
+          return (
+            <button
+              key={c.id}
+              onClick={() => toggle(c.id)}
+              disabled={isDisabled}
+              className={`flex items-center gap-3 px-3 py-2 rounded-lg border text-left transition ${
+                isSelected
+                  ? "bg-purple-500/20 border-purple-400/50"
+                  : isDisabled
+                  ? "opacity-30 cursor-not-allowed border-transparent"
+                  : "bg-white/5 border-white/10 hover:bg-white/10"
+              }`}
+            >
+              <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
+                isSelected ? "bg-purple-400 border-purple-400" : "border-white/30"
+              }`}>
+                {isSelected && <span className="text-[8px] text-white font-bold">✓</span>}
+              </div>
+              <span className="text-xl flex-shrink-0">{c.flag}</span>
+              <span className="text-sm text-white font-medium">{c.country}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── Main admin page ───────────────────────────────────────────────────────────
 export default function AdminPage() {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("control");
@@ -121,26 +209,44 @@ export default function AdminPage() {
   const [editTarget, setEditTarget] = useState<Partial<Contestant> | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
 
+  // Reveal state
+  const [revealStage, setRevealStage] = useState(0);
+  const [worldResults, setWorldResults] = useState<WorldResults>({ top5: [], bottom5: [], winner_id: null });
+  const [worldSaving, setWorldSaving] = useState(false);
+  const [worldSaved, setWorldSaved] = useState(false);
+
   const loadAll = useCallback(async () => {
     const [stateRes, contRes, usersRes] = await Promise.all([
       fetch("/api/state"),
       fetch("/api/contestants"),
       fetch("/api/users"),
     ]);
-
     if (usersRes.status === 403) { router.push("/"); return; }
-
     const [stateData, contData, usersData] = await Promise.all([
       stateRes.json(),
       contRes.json(),
       usersRes.json(),
     ]);
-
     setPhase(stateData.phase);
     setContestants(contData);
     setUsers(usersData);
     setLoading(false);
   }, [router]);
+
+  const loadReveal = useCallback(async () => {
+    const [stageRes, wrRes] = await Promise.all([
+      fetch("/api/reveal-stage"),
+      fetch("/api/world-results"),
+    ]);
+    if (stageRes.ok) {
+      const d = await stageRes.json();
+      setRevealStage(d.stage);
+    }
+    if (wrRes.ok) {
+      const d = await wrRes.json();
+      setWorldResults(d);
+    }
+  }, []);
 
   const loadResults = useCallback(async () => {
     const res = await fetch("/api/results");
@@ -151,13 +257,9 @@ export default function AdminPage() {
     }
   }, []);
 
-  useEffect(() => {
-    loadAll();
-  }, [loadAll]);
-
-  useEffect(() => {
-    if (tab === "results") loadResults();
-  }, [tab, loadResults]);
+  useEffect(() => { loadAll(); }, [loadAll]);
+  useEffect(() => { if (tab === "results") loadResults(); }, [tab, loadResults]);
+  useEffect(() => { if (tab === "reveal") loadReveal(); }, [tab, loadReveal]);
 
   async function setPhaseAction(newPhase: Phase) {
     const res = await fetch("/api/state", {
@@ -204,6 +306,28 @@ export default function AdminPage() {
     setUsers((u) => u.filter((x) => x.id !== id));
   }
 
+  async function saveWorldResults() {
+    setWorldSaving(true);
+    setWorldSaved(false);
+    await fetch("/api/world-results", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(worldResults),
+    });
+    setWorldSaving(false);
+    setWorldSaved(true);
+    setTimeout(() => setWorldSaved(false), 2500);
+  }
+
+  async function setRevealStageAction(stage: number) {
+    const res = await fetch("/api/reveal-stage", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ stage }),
+    });
+    if (res.ok) setRevealStage(stage);
+  }
+
   async function handleLogout() {
     await fetch("/api/auth", { method: "DELETE" });
     router.push("/");
@@ -212,13 +336,21 @@ export default function AdminPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-white/60 animate-pulse">Loading admin panel...</div>
+        <div className="text-white/60 animate-pulse">Loading admin panel…</div>
       </div>
     );
   }
 
   const nonAdminUsers = users.filter((u) => !u.is_admin);
   const votedCount = nonAdminUsers.filter((u) => u.vote_count > 0).length;
+
+  const tabs: { id: Tab; label: string }[] = [
+    { id: "control",     label: "⚡ Control" },
+    { id: "contestants", label: "🎤 Contestants" },
+    { id: "users",       label: "👥 Users" },
+    { id: "results",     label: "🏆 Scores" },
+    { id: "reveal",      label: "🌍 Reveal" },
+  ];
 
   return (
     <div className="min-h-screen">
@@ -246,20 +378,18 @@ export default function AdminPage() {
             </button>
           </div>
         </div>
-
-        {/* Tabs */}
-        <div className="max-w-3xl mx-auto px-4 flex gap-0">
-          {(["control", "contestants", "users", "results"] as Tab[]).map((t) => (
+        <div className="max-w-3xl mx-auto px-4 flex gap-0 overflow-x-auto">
+          {tabs.map((t) => (
             <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`px-4 py-2 text-sm font-medium border-b-2 transition capitalize ${
-                tab === t
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition whitespace-nowrap ${
+                tab === t.id
                   ? "border-purple-400 text-purple-300"
                   : "border-transparent text-white/40 hover:text-white/70"
               }`}
             >
-              {t === "control" ? "⚡ Control" : t === "contestants" ? "🎤 Contestants" : t === "users" ? "👥 Users" : "🏆 Results"}
+              {t.label}
             </button>
           ))}
         </div>
@@ -267,27 +397,24 @@ export default function AdminPage() {
 
       <div className="max-w-3xl mx-auto px-4 py-6">
 
-        {/* ── CONTROL TAB ── */}
+        {/* ── CONTROL ── */}
         {tab === "control" && (
           <div className="space-y-6">
             <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
               <h2 className="text-lg font-bold text-white mb-1">Voting Phase</h2>
               <p className="text-white/50 text-sm mb-5">Control the voting lifecycle for all participants.</p>
-
               <div className="grid grid-cols-2 gap-3">
                 {([
-                  { phase: "waiting" as Phase, label: "⏳ Waiting", desc: "Lobby open, no voting yet", color: "from-yellow-600 to-amber-600" },
-                  { phase: "voting" as Phase, label: "✅ Open Voting", desc: "Allow participants to vote", color: "from-green-600 to-emerald-600" },
-                  { phase: "closed" as Phase, label: "🔒 Close Voting", desc: "Lock in all votes", color: "from-red-600 to-rose-600" },
-                  { phase: "results" as Phase, label: "🏆 Show Results", desc: "Reveal results to all", color: "from-purple-600 to-pink-600" },
+                  { phase: "waiting" as Phase, label: "⏳ Waiting",      desc: "Lobby open, no voting yet",     color: "from-yellow-600 to-amber-600" },
+                  { phase: "voting"  as Phase, label: "✅ Open Voting",   desc: "Allow participants to vote",    color: "from-green-600 to-emerald-600" },
+                  { phase: "closed"  as Phase, label: "🔒 Close Voting",  desc: "Lock in all votes",             color: "from-red-600 to-rose-600" },
+                  { phase: "results" as Phase, label: "🏆 Show Results",  desc: "Redirect all to results page",  color: "from-purple-600 to-pink-600" },
                 ] as const).map(({ phase: p, label, desc, color }) => (
                   <button
                     key={p}
                     onClick={() => setPhaseAction(p)}
                     className={`text-left p-4 rounded-xl border-2 transition ${
-                      phase === p
-                        ? `bg-gradient-to-br ${color} border-white/40`
-                        : "bg-white/5 border-white/10 hover:border-white/30"
+                      phase === p ? `bg-gradient-to-br ${color} border-white/40` : "bg-white/5 border-white/10 hover:border-white/30"
                     }`}
                   >
                     <div className="font-bold text-white text-sm">{label}</div>
@@ -296,33 +423,27 @@ export default function AdminPage() {
                 ))}
               </div>
             </div>
-
             <div className="grid grid-cols-3 gap-3">
-              <div className="bg-white/5 border border-white/10 rounded-xl p-4 text-center">
-                <div className="text-3xl font-black text-white">{nonAdminUsers.length}</div>
-                <div className="text-white/50 text-xs mt-1">Registered voters</div>
-              </div>
-              <div className="bg-white/5 border border-white/10 rounded-xl p-4 text-center">
-                <div className="text-3xl font-black text-green-300">{votedCount}</div>
-                <div className="text-white/50 text-xs mt-1">Voted</div>
-              </div>
-              <div className="bg-white/5 border border-white/10 rounded-xl p-4 text-center">
-                <div className="text-3xl font-black text-purple-300">{contestants.length}</div>
-                <div className="text-white/50 text-xs mt-1">Contestants</div>
-              </div>
+              {[
+                { value: nonAdminUsers.length, label: "Registered voters",  color: "text-white" },
+                { value: votedCount,            label: "Voted",              color: "text-green-300" },
+                { value: contestants.length,    label: "Contestants",        color: "text-purple-300" },
+              ].map(({ value, label, color }) => (
+                <div key={label} className="bg-white/5 border border-white/10 rounded-xl p-4 text-center">
+                  <div className={`text-3xl font-black ${color}`}>{value}</div>
+                  <div className="text-white/50 text-xs mt-1">{label}</div>
+                </div>
+              ))}
             </div>
           </div>
         )}
 
-        {/* ── CONTESTANTS TAB ── */}
+        {/* ── CONTESTANTS ── */}
         {tab === "contestants" && (
           <div>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold text-white">Contestants ({contestants.length})</h2>
-              <button
-                onClick={() => setShowAddModal(true)}
-                className="bg-purple-600 hover:bg-purple-500 text-white text-sm px-4 py-2 rounded-xl transition"
-              >
+              <button onClick={() => setShowAddModal(true)} className="bg-purple-600 hover:bg-purple-500 text-white text-sm px-4 py-2 rounded-xl transition">
                 + Add
               </button>
             </div>
@@ -335,18 +456,8 @@ export default function AdminPage() {
                     <div className="text-xs text-white/40 truncate">{c.artist} — {c.song}</div>
                   </div>
                   <div className="flex gap-2">
-                    <button
-                      onClick={() => setEditTarget(c)}
-                      className="text-white/40 hover:text-white text-xs px-2 py-1 rounded hover:bg-white/10 transition"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => deleteContestant(c.id)}
-                      className="text-red-400/60 hover:text-red-400 text-xs px-2 py-1 rounded hover:bg-red-400/10 transition"
-                    >
-                      Delete
-                    </button>
+                    <button onClick={() => setEditTarget(c)} className="text-white/40 hover:text-white text-xs px-2 py-1 rounded hover:bg-white/10 transition">Edit</button>
+                    <button onClick={() => deleteContestant(c.id)} className="text-red-400/60 hover:text-red-400 text-xs px-2 py-1 rounded hover:bg-red-400/10 transition">Delete</button>
                   </div>
                 </div>
               ))}
@@ -354,7 +465,7 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* ── USERS TAB ── */}
+        {/* ── USERS ── */}
         {tab === "users" && (
           <div>
             <div className="flex items-center justify-between mb-4">
@@ -377,10 +488,7 @@ export default function AdminPage() {
                     <span className={`text-xs px-2 py-1 rounded-full ${u.vote_count > 0 ? "bg-green-500/20 text-green-300" : "bg-white/10 text-white/40"}`}>
                       {u.vote_count > 0 ? "✓ Voted" : "Not voted"}
                     </span>
-                    <button
-                      onClick={() => deleteUser(u.id, u.name)}
-                      className="text-red-400/60 hover:text-red-400 text-xs px-2 py-1 rounded hover:bg-red-400/10 transition"
-                    >
+                    <button onClick={() => deleteUser(u.id, u.name)} className="text-red-400/60 hover:text-red-400 text-xs px-2 py-1 rounded hover:bg-red-400/10 transition">
                       Remove
                     </button>
                   </div>
@@ -390,16 +498,14 @@ export default function AdminPage() {
           </div>
         )}
 
-        {/* ── RESULTS TAB ── */}
+        {/* ── LIVE SCORES ── */}
         {tab === "results" && (
           <div>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-white">Live Results</h2>
+              <h2 className="text-lg font-bold text-white">Live Player Scores</h2>
               <div className="flex items-center gap-3">
                 <span className="text-white/40 text-sm">{voterCount} voters</span>
-                <button onClick={loadResults} className="text-purple-400 hover:text-purple-300 text-xs transition">
-                  Refresh
-                </button>
+                <button onClick={loadResults} className="text-purple-400 hover:text-purple-300 text-xs transition">Refresh</button>
               </div>
             </div>
             {results.length === 0 ? (
@@ -424,6 +530,97 @@ export default function AdminPage() {
             )}
           </div>
         )}
+
+        {/* ── REVEAL ── */}
+        {tab === "reveal" && (
+          <div className="space-y-8">
+
+            {/* World Results Input */}
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-6 space-y-6">
+              <div>
+                <h2 className="text-lg font-bold text-white mb-1">World Voting Results</h2>
+                <p className="text-white/40 text-sm">Enter the actual Eurovision world voting results to compare with player predictions.</p>
+              </div>
+
+              <CountryPicker
+                label="World Bottom 5 (countries voted lowest)"
+                contestants={contestants}
+                selected={worldResults.bottom5}
+                disabled={worldResults.top5}
+                max={5}
+                onChange={(ids) => setWorldResults((w) => ({ ...w, bottom5: ids }))}
+              />
+
+              <CountryPicker
+                label="World Top 5 (countries voted highest)"
+                contestants={contestants}
+                selected={worldResults.top5}
+                disabled={worldResults.bottom5}
+                max={5}
+                onChange={(ids) => setWorldResults((w) => ({ ...w, top5: ids }))}
+              />
+
+              <CountryPicker
+                label="Eurovision 2026 Winner"
+                contestants={contestants}
+                selected={worldResults.winner_id ? [worldResults.winner_id] : []}
+                max={1}
+                single
+                onChange={(ids) => setWorldResults((w) => ({ ...w, winner_id: ids[0] ?? null }))}
+              />
+
+              <button
+                onClick={saveWorldResults}
+                disabled={worldSaving}
+                className={`w-full py-3 rounded-xl font-bold transition ${
+                  worldSaved
+                    ? "bg-green-600 text-white"
+                    : "bg-purple-600 hover:bg-purple-500 text-white disabled:opacity-50"
+                }`}
+              >
+                {worldSaving ? "Saving…" : worldSaved ? "✓ Saved!" : "Save World Results"}
+              </button>
+            </div>
+
+            {/* Reveal Stage Controls */}
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+              <h2 className="text-lg font-bold text-white mb-1">Reveal Controls</h2>
+              <p className="text-white/40 text-sm mb-5">
+                Advance through the reveal stages. Make sure phase is set to <span className="text-purple-300 font-medium">"Show Results"</span> first so players land on the results page.
+              </p>
+
+              <div className="space-y-2">
+                {REVEAL_STAGES.map(({ stage, label, desc }) => (
+                  <button
+                    key={stage}
+                    onClick={() => setRevealStageAction(stage)}
+                    className={`w-full text-left p-4 rounded-xl border-2 transition ${
+                      revealStage === stage
+                        ? "bg-gradient-to-r from-purple-600 to-pink-600 border-white/30"
+                        : revealStage > stage
+                        ? "bg-white/5 border-white/5 opacity-50"
+                        : "bg-white/5 border-white/10 hover:border-white/30"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-bold text-white text-sm">{label}</div>
+                        <div className="text-white/40 text-xs mt-0.5">{desc}</div>
+                      </div>
+                      {revealStage === stage && (
+                        <span className="text-xs bg-white/20 text-white px-2 py-1 rounded-full">LIVE</span>
+                      )}
+                      {revealStage > stage && (
+                        <span className="text-xs text-white/30">Done</span>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
       </div>
     </div>
   );
