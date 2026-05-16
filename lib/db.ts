@@ -84,6 +84,18 @@ export async function initDb() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `;
+  await sql`
+    CREATE TABLE IF NOT EXISTS world_results (
+      id INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+      top5 TEXT NOT NULL DEFAULT '[]',
+      bottom5 TEXT NOT NULL DEFAULT '[]',
+      winner_id BIGINT REFERENCES contestants(id) ON DELETE SET NULL
+    )
+  `;
+  await sql`
+    INSERT INTO world_results (id, top5, bottom5) VALUES (1, '[]', '[]')
+    ON CONFLICT (id) DO NOTHING
+  `;
 
   // Seed admin
   const adminCheck = await sql`SELECT id FROM users WHERE is_admin = 1 LIMIT 1`;
@@ -91,9 +103,13 @@ export async function initDb() {
     await sql`INSERT INTO users (name, is_admin) VALUES ('Admin', 1)`;
   }
 
-  // Seed phase
+  // Seed state keys
   await sql`
     INSERT INTO app_state (key, value) VALUES ('phase', 'waiting')
+    ON CONFLICT (key) DO NOTHING
+  `;
+  await sql`
+    INSERT INTO app_state (key, value) VALUES ('reveal_stage', '0')
     ON CONFLICT (key) DO NOTHING
   `;
 
