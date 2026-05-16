@@ -68,18 +68,13 @@ function WaitingScreen({ comments }: { comments: RevealComment[] }) {
 
   // Cycling comment state
   const [commentIndex, setCommentIndex] = useState(0);
-  const [commentVisible, setCommentVisible] = useState(true);
   const hasComments = comments.length > 0;
 
   useEffect(() => {
     if (!hasComments) return;
     const cycle = setInterval(() => {
-      setCommentVisible(false);
-      setTimeout(() => {
-        setCommentIndex((i) => (i + 1) % comments.length);
-        setCommentVisible(true);
-      }, 600);
-    }, 5600);
+      setCommentIndex((i) => (i + 1) % comments.length);
+    }, 5000);
     return () => clearInterval(cycle);
   }, [hasComments, comments.length]);
 
@@ -110,7 +105,7 @@ function WaitingScreen({ comments }: { comments: RevealComment[] }) {
         <div className="w-full max-w-sm min-h-[96px] flex items-center justify-center mb-6">
           <div
             className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-center"
-            style={{ opacity: commentVisible ? 1 : 0, transition: "opacity 0.6s ease" }}
+            style={{}
           >
             <p className="text-white/80 text-sm italic mb-3 leading-relaxed">
               &ldquo;{activeComment.content}&rdquo;
