@@ -69,19 +69,28 @@ function WaitingScreen({ comments }: { comments: RevealComment[] }) {
   // Cycling comment state
   const [commentIndex, setCommentIndex] = useState(0);
   const hasComments = comments.length > 0;
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const nextComment = useCallback(() => {
+    setCommentIndex((i) => (i + 1) % comments.length);
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = setInterval(() => {
+      setCommentIndex((i) => (i + 1) % comments.length);
+    }, 5000);
+  }, [comments.length]);
 
   useEffect(() => {
     if (!hasComments) return;
-    const cycle = setInterval(() => {
+    timerRef.current = setInterval(() => {
       setCommentIndex((i) => (i + 1) % comments.length);
     }, 5000);
-    return () => clearInterval(cycle);
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [hasComments, comments.length]);
 
   const activeComment = hasComments ? comments[commentIndex] : null;
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center text-center px-4 overflow-hidden">
+    <div className="min-h-screen flex flex-col items-center justify-center text-center px-4 overflow-hidden cursor-pointer select-none" onClick={hasComments ? nextComment : undefined}>
       <div className="relative mb-8">
         <div className="text-8xl animate-float" style={{ animationDuration: "2.5s" }}>🍾</div>
         <div className="absolute -top-4 -right-8 text-4xl animate-sparkle">✨</div>
@@ -105,7 +114,6 @@ function WaitingScreen({ comments }: { comments: RevealComment[] }) {
         <div className="w-full max-w-sm min-h-[96px] flex items-center justify-center mb-6">
           <div
             className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-center"
-            style={{}
           >
             <p className="text-white/80 text-sm italic mb-3 leading-relaxed">
               &ldquo;{activeComment.content}&rdquo;
