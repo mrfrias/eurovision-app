@@ -426,11 +426,50 @@ export default function VotePage() {
 
   if (phase === "closed" && step === "voting" && Object.keys(savedVotes).length === 0) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center text-center px-4">
+      <div className="min-h-screen flex flex-col items-center justify-center text-center px-6 py-12">
         <div className="text-6xl mb-4">🔒</div>
         <h2 className="text-3xl font-bold text-white mb-2">Voting is closed</h2>
         <p className="text-white/50">You didn&apos;t submit your votes in time.</p>
         <button onClick={handleLogout} className="mt-8 text-white/40 hover:text-white/70 text-sm transition">Logout</button>
+      </div>
+    );
+  }
+
+  if (phase === "closed" && step === "done") {
+    const drinks = ["🍷", "🥂", "🍸", "🍺", "🍹", "🫧"];
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center text-center px-6 py-12">
+        <div className="text-7xl mb-6 animate-float" style={{ animationDuration: "2.8s" }}>🤫</div>
+
+        <h1 className="text-4xl font-black text-white mb-2">Votes locked in!</h1>
+        <p className="text-white/60 text-lg mb-8">The results will be revealed soon…</p>
+
+        <div className="max-w-sm w-full bg-white/5 border border-white/10 rounded-2xl p-6 text-left space-y-4 mb-8">
+          <p className="text-white leading-relaxed">
+            🤐 <span className="font-semibold">Keep your votes to yourself!</span> Don&apos;t share
+            what you picked — not a single hint. The suspense is part of the fun!
+          </p>
+          <p className="text-white/70 leading-relaxed">
+            No whispers, no hints, no peeking at anyone else&apos;s screen. The big
+            reveal is coming and it&apos;s going to be{" "}
+            <span className="text-yellow-300 font-semibold">spectacular</span>. ✨
+          </p>
+          <p className="text-white/70 leading-relaxed">
+            In the meantime — your glass looks suspiciously empty. 👀
+            Hendrik&apos;s food table is calling your name too. Go enjoy! 🍽️
+          </p>
+        </div>
+
+        <div className="flex gap-3 text-3xl mb-8">
+          {drinks.map((d, i) => (
+            <span key={i} className="animate-float" style={{ animationDelay: `${i * 0.3}s`, animationDuration: `${2.5 + i * 0.15}s` }}>
+              {d}
+            </span>
+          ))}
+        </div>
+
+        <p className="text-white/30 text-sm">Sit tight — the host is preparing the reveal 🎤</p>
+        <button onClick={handleLogout} className="mt-6 text-white/20 hover:text-white/50 text-xs transition">Logout</button>
       </div>
     );
   }
