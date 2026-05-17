@@ -37,7 +37,29 @@ interface WorldResults {
 }
 
 type Phase = "waiting" | "live_show" | "voting" | "closed" | "results";
-type Tab = "control" | "contestants" | "users" | "results" | "reveal";
+type Tab = "control" | "contestants" | "users" | "results" | "reveal" | "details";
+
+interface PlayerVote {
+  contestant_id: number;
+  points: number;
+  country: string;
+  flag: string;
+  artist: string;
+}
+
+interface PlayerComment {
+  contestant_id: number;
+  content: string;
+  country: string;
+  flag: string;
+}
+
+interface PlayerDetail {
+  id: number;
+  name: string;
+  votes: PlayerVote[];
+  comments: PlayerComment[];
+}
 
 const PHASE_LABELS: Record<Phase, string> = {
   waiting:   "Waiting",
@@ -211,6 +233,10 @@ export default function AdminPage() {
   const [editTarget, setEditTarget] = useState<Partial<Contestant> | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
 
+  // Player details state
+  const [players, setPlayers] = useState<PlayerDetail[]>([]);
+  const [expandedPlayer, setExpandedPlayer] = useState<number | null>(null);
+
   // Reveal state
   const [revealStage, setRevealStage] = useState(0);
   const [worldResults, setWorldResults] = useState<WorldResults>({ top5: [], bottom5: [], winner_id: null });
@@ -261,9 +287,18 @@ export default function AdminPage() {
     }
   }, []);
 
+  const loadPlayerDetails = useCallback(async () => {
+    const res = await fetch("/api/admin/player-details");
+    if (res.ok) {
+      const data = await res.json();
+      setPlayers(data.players);
+    }
+  }, []);
+
   useEffect(() => { loadAll(); }, [loadAll]);
   useEffect(() => { if (tab === "results") loadResults(); }, [tab, loadResults]);
   useEffect(() => { if (tab === "reveal") loadReveal(); }, [tab, loadReveal]);
+  useEffect(() => { if (tab === "details") loadPlayerDetails(); }, [tab, loadPlayerDetails]);
 
   async function setPhaseAction(newPhase: Phase) {
     const res = await fetch("/api/state", {
@@ -366,6 +401,7 @@ export default function AdminPage() {
     { id: "contestants", label: "🎤 Contestants" },
     { id: "users",       label: "👥 Users" },
     { id: "results",     label: "🏆 Scores" },
+    { id: "details",     label: "📋 Details" },
     { id: "reveal",      label: "🌍 Reveal" },
   ];
 
@@ -582,6 +618,98 @@ export default function AdminPage() {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── PLAYER DETAILS ── */}
+        {tab === "details" && (
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-white">Player Votes &amp; Comments</h2>
+              <button onClick={loadPlayerDetails} className="text-purple-400 hover:text-purple-300 text-xs transition">Refresh</button>
+            </div>
+            {players.length === 0 ? (
+              <div className="text-center py-10 text-white/30">No data yet</div>
+            ) : (
+              <div className="space-y-3">
+                {players.map((p) => {
+                  const isOpen = expandedPlayer === p.id;
+                  const hasVotes    = p.votes.length > 0;
+                  const hasComments = p.comments.length > 0;
+                  return (
+                    <div key={p.id} className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
+                      {/* Player header row */}
+                      <button
+                        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-white/5 transition"
+                        onClick={() => setExpandedPlayer(isOpen ? null : p.id)}
+                      >
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                          {p.name[0].toUpperCase()}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-semibold text-white text-sm">{p.name}</div>
+                          <div className="text-xs text-white/40">
+                            {hasVotes ? `${p.votes.length} votes` : "no votes"}{hasComments ? ` · ${p.comments.length} comments` : ""}
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          {hasVotes    && <span className="text-xs bg-green-500/20 text-green-300 px-2 py-0.5 rounded-full">🗳️ Voted</span>}
+                          {hasComments && <span className="text-xs bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded-full">💬 {p.comments.length}</span>}
+                        </div>
+                        <span className="text-white/30 text-xs ml-1">{isOpen ? "▲" : "▼"}</span>
+                      </button>
+
+                      {isOpen && (
+                        <div className="border-t border-white/10 px-4 py-4 space-y-5">
+                          {/* Votes */}
+                          <div>
+                            <p className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-2">Votes</p>
+                            {!hasVotes ? (
+                              <p className="text-white/30 text-sm">No votes submitted</p>
+                            ) : (
+                              <div className="space-y-1.5">
+                                {p.votes.map((v) => (
+                                  <div key={v.contestant_id} className="flex items-center gap-3">
+                                    <span className={`text-xs font-black w-7 text-right flex-shrink-0 ${
+                                      v.points === 12 ? "text-yellow-300" :
+                                      v.points === 10 ? "text-orange-300" :
+                                      v.points >= 7   ? "text-purple-300" : "text-white/50"
+                                    }`}>{v.points}</span>
+                                    <span className="text-lg flex-shrink-0">{v.flag}</span>
+                                    <span className="text-white text-sm">{v.country}</span>
+                                    <span className="text-white/30 text-xs truncate">{v.artist}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Comments */}
+                          <div>
+                            <p className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-2">Comments</p>
+                            {!hasComments ? (
+                              <p className="text-white/30 text-sm">No comments written</p>
+                            ) : (
+                              <div className="space-y-2">
+                                {p.comments.map((c) => (
+                                  <div key={c.contestant_id} className="bg-white/5 rounded-xl px-3 py-2.5">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <span className="text-base">{c.flag}</span>
+                                      <span className="text-white/60 text-xs font-medium">{c.country}</span>
+                                    </div>
+                                    <p className="text-white/80 text-sm leading-relaxed">{c.content}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
